@@ -52,8 +52,15 @@ class MIOTree:
                 # !!! It's not possible to set max_samples_split in DecisionTreeClassifier !!!
                 
                 init_time = time.time()
-                cart_model = tree.DecisionTreeClassifier(max_depth=D, min_samples_leaf=self.min_samples_per_leaf, ccp_alpha=0)
+                cart_model = None
+
+                if self.min_samples_per_leaf > 1:
+                    cart_model = tree.DecisionTreeClassifier(max_depth=D, min_samples_leaf=self.min_samples_per_leaf, ccp_alpha=0)
+                else:
+                    cart_model = tree.DecisionTreeClassifier(max_depth=D, ccp_alpha=0)
+
                 cart_model.fit(self.X_train, self.y_train)
+
                 duration = time.time() - init_time
 
                 tree_from_model = cart_model.tree_
@@ -114,8 +121,6 @@ class MIOTree:
                         new_model.pyomo_model.l[t] = int(t % 2)
                         if t % 2:
                             t_leaf = t
-                            while value is None:
-                                t //= 2
                             for k in new_model.pyomo_model.classes_indices:
                                 new_model.pyomo_model.c[k, t_leaf] = 1 if k == np.argmax(value) else 0
                         else:
@@ -178,9 +183,8 @@ class MIOTree:
         return final_model
 
     def calculate_confusion_matrix(self):
-        if len(self.y_train.shape) > 1:
-            y = self.y_train.flatten()
-
+        y = self.y_train.flatten() if len(self.y_train.shape) > 1 else self.y_train
+        
         if self.y_pred is None:
             self.y_pred = self.extract_predictions()
             if len(self.y_pred.shape) > 1:
@@ -271,7 +275,7 @@ class MIOTree:
         features_indices = range(self.X_train.shape[1])  # called 'p' in paper
         model.features_indices = pyo.Set(initialize=features_indices, ordered=True, name="features_indices", doc="features index")
        
-        classes_indices = range(len(np.unique(self.y_train))) # called 'K' in paper
+        classes_indices = np.unique(self.y_train) # called 'K' in paper
         model.classes_indices = pyo.Set(initialize=classes_indices, ordered=True, name="classes_indices", doc="classes index")
 
         branch_nodes = self.tree.branch_nodes # called 'TB' in paper
@@ -408,7 +412,13 @@ class MIOTree:
         """
         Calculate the baseline accuracy for the target variable.
         """
-        return stats.mode(y)[1][0]
+        classes = np.unique(y)
+        max = 0
+        for c in classes:
+            count = len(y[y == c])
+            if count > max:
+                max = count
+        return max/len(y)
 
     def compute_epsilon_min_max(self, X):
         """"
