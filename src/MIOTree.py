@@ -223,7 +223,8 @@ class MIOTree:
             init_time = time.time()
             result = model.solve('gurobi', warmstart=True)
             duration = time.time() - init_time
-            self.print_log("MIO", duration=duration, accuracy_train=accuracy, depth=model.max_depth, alpha=model.alpha)
+            accuracy_test = model.calculate_accuracy(X_test, y_test)
+            self.print_log("MIO", duration=duration, accuracy_train=accuracy, depth=model.max_depth, alpha=model.alpha, accuracy_test=accuracy_test)
 
             if result.solver.termination_condition == pyo.TerminationCondition.optimal:
                 optimal_solutions.append(warm_start_pool[i])
@@ -232,7 +233,8 @@ class MIOTree:
 
         # Identify the best performing solution on a validation set, and the range of α for which
         # this solution is optimal. Use the midpoint of this interval as the tuned value of α
-        best_result = max(optimal_solutions, key=lambda x: x['model'].calculate_accuracy(X_test, y_test))
+        # If same accuracy, choose the one with the lowest duration
+        best_result = max(optimal_solutions, key=lambda x: (x['model'].calculate_accuracy(X_test, y_test), -x['duration']))
         final_model = best_result['model']
 
         print(f"Final model accuracy: {best_result['accuracy']}, alpha: {final_model.alpha}, depth: {final_model.max_depth}")
