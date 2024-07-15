@@ -223,11 +223,12 @@ class MIOTree:
             init_time = time.time()
             result = model.solve('gurobi', warmstart=True)
             duration = time.time() - init_time
+            accuracy_train = model.calculate_accuracy()
             accuracy_test = model.calculate_accuracy(X_test, y_test)
-            self.print_log("MIO", duration=duration, accuracy_train=accuracy, depth=model.max_depth, alpha=model.alpha, accuracy_test=accuracy_test)
+            self.print_log("MIO", duration=duration, accuracy_train=accuracy_train, depth=model.max_depth, alpha=model.alpha, accuracy_test=accuracy_test)
 
             if result.solver.termination_condition == pyo.TerminationCondition.optimal:
-                optimal_solutions.append(warm_start_pool[i])
+                optimal_solutions.append({'model': model, 'accuracy': accuracy_train, 'duration': duration, 'type': 'MIO'})
             else:
                 print(f"Solution is not optimal for alpha: {model.alpha}")
 
