@@ -1,0 +1,19 @@
+{
+    "cSpell.words": [
+        "arange",
+        "argmax",
+        "cplex",
+        "datapoints",
+        "dtype",
+        "glpk",
+        "gurobi",
+        "ipopt",
+        "ndarray",
+        "ndenumerate",
+        "ndim",
+        "Nmin",
+        "pyomo",
+        "quicksum",
+        "warmstart"
+    ]
+}

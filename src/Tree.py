@@ -1,15 +1,19 @@
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+
 
 class Node:
-    def __init__(self, id, value=None, b=None):
+    def __init__(self, id, value=None, b=None, a=None):
         """
         :param value: int
         """
         self.id = id
         self.value = value
         self.b = b
+        self.a = a
         self.left = None
         self.right = None
+
 
 class Tree:
     def __init__(self, max_depth):
@@ -24,7 +28,7 @@ class Tree:
         self.branch_nodes = np.arange(1, divide)
         self.leaf_nodes = np.arange(divide, totalNodes + 1)
 
-    def tree_from_array(self, array, predictions=None, a = None, b = None):
+    def tree_from_array(self, array, predictions=None, a=None, b=None):
         """
         :return: Node
         """
@@ -35,21 +39,31 @@ class Tree:
         if b is None:
             b = []
 
+        features_used = a.extract_values()
+
+        start_leaf = len(array) - len(predictions)
 
         new_array = []
         for i in range(len(array)):
             element = {
                 'id': array[i],
-                'value': predictions[i] if i < len(predictions) else None,
-                'b': b[array[i]].value if array[i] in b else None
+                'value': predictions[i - start_leaf] if i >= start_leaf else None,
+                'a': None,
+                'b': b[array[i]] if array[i] in b else None,
             }
-            new_array.append(element)                    
+            if features_used is not None:
+                filtered = {key: value for key, value in features_used.items() if key[1] == array[i]}
+                for key in filtered:
+                    if int(filtered[key]) == 1:
+                        element['a'] = key[0]
+
+            new_array.append(element)
 
         return self._build_tree(new_array, None, 0, len(array))
-    
+
     def _build_tree(self, arr, root, i, n):
         if i < n:
-            temp = Node(arr[i]['id'], arr[i]['value'], arr[i]['b'])
+            temp = Node(arr[i]['id'], arr[i]['value'], arr[i]['b'], arr[i]['a'])
             root = temp
 
             # Insert left child
@@ -58,28 +72,31 @@ class Tree:
             # Insert right child
             root.right = self._build_tree(arr, root.right, 2 * i + 2, n)
         return root
-    
-    def print_tree(self, predictions=None, a = None, b = None):
+
+    def print_tree(self, predictions=None, a=None, b=None):
         """
         Print the tree
         """
-        root = self.tree_from_array(np.concatenate([self.branch_nodes, self.leaf_nodes]), predictions, a, b)
+        root = self.tree_from_array(np.concatenate(
+            [self.branch_nodes, self.leaf_nodes]), predictions, a, b)
         self._print_tree(root)
 
     def _print_tree(self, root, level=0, prefix="Root: "):
         if root is not None:
-            print(" " * (level * 4) + prefix + f"({root.id}) val: " + str(root.value) + f" b: {root.b}")
+            print(" " * (level * 4) + prefix +
+                  f"({root.id}) val: " + str(root.value) + f" b: {root.b}" + f" a: {root.a}")
             if root.left or root.right:
                 if root.left:
                     self._print_tree(root.left, level + 1, "L--- ")
                 else:
-                    print(" " * ((level + 1) * 4) + "L---" + f"({root.id})val: " + root.value + f"b: {root.b}")
+                    print(" " * ((level + 1) * 4) + "L---" +
+                          f"({root.id})val: " + root.value + f"b: {root.b}" + f"a: {root.a}")
 
                 if root.right:
                     self._print_tree(root.right, level + 1, "R--- ")
                 else:
-                    print(" " * ((level + 1) * 4) + "R---" + f"({root.id})val: " + root.value + f"b: {root.b}")
-
+                    print(" " * ((level + 1) * 4) + "R---" +
+                          f"({root.id})val: " + root.value + f"b: {root.b}" + f"a: {root.a}")
 
     def right_ancestors(self, node_index):
         """

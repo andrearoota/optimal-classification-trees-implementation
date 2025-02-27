@@ -128,7 +128,7 @@ class MIOTree:
                     else:
                         self.pyomo_model.c[k, t] = 0 """
             
-    def tune(self, X_test, y_test):
+    def tune(self, X_test, y_test, c2label):
         """
         Tune the hyperparameters of the model.
         :param X_test: np.ndarray
@@ -197,8 +197,9 @@ class MIOTree:
 
                 accuracy = new_MIO_model.calculate_accuracy()
                 self.print_log(duration=duration, accuracy_train=accuracy, depth=D, alpha=C)
-                leaf_predictions = self.extract_leaf_predictions(new_MIO_model)
-                self.tree.print_tree(leaf_predictions, a=new_MIO_model.pyomo_model.a, b=new_MIO_model.pyomo_model.b)
+                leaf_predictions = self.extract_leaf_predictions(new_MIO_model, c2label)
+                # TODO: NORMALIZE THE TREE
+                #(leaf_predictions, a=new_MIO_model.pyomo_model.a, b=new_MIO_model.pyomo_model.b)
                 print()
 
                 # Add the MIO solution to the warm start pool
@@ -242,22 +243,19 @@ class MIOTree:
         
         return final_model
     
-    def extract_leaf_predictions(self, model = None):
+    def extract_leaf_predictions(self, model = None, c2label = None):
         if model is None:
             model = self
-
-        classes = np.unique(model.y_train)
 
         num_leaf_nodes = len(model.pyomo_model.leaf_nodes)
         leaf_predictions = [None] * num_leaf_nodes
 
-        class_index_to_label = {i: classes[i] for i in model.pyomo_model.classes_indices}
-
         for i in model.pyomo_model.classes_indices:
             for j in model.pyomo_model.leaf_nodes:
-                if int(model.pyomo_model.c[i, j].value) == 1:
+                if model.pyomo_model.c[i, j].value == 1:
                     leaf_index = j - num_leaf_nodes
-                    leaf_predictions[leaf_index] = class_index_to_label[i]
+                    if 0 <= leaf_index < num_leaf_nodes:
+                        leaf_predictions[leaf_index] = c2label[i]
 
         return leaf_predictions
 
